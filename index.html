@@ -177,67 +177,64 @@
     </div>
   </div>
 
-   <!-- MQTT.js -->
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<script>
-  const PRODUCT_ID   = '1pqUjxykK3';
-  const ACCESS_KEY   = 'GzEhAZdfu6GFzyWdFYNb0b1tte13y89tpS8fD2lRDyE=';
-  const DEVICE_NAME  = '866597075998011';
+  <script>
+    // —— 一、HTTP 下发参数 —— 
+    const DEVICE_ID = '866597075998011';        // 在 OneNET 控制台 → 设备管理 → 设备ID
+    const API_KEY   = 'GzEhAZdfu6GFzyWdFYNb0b1tte13y89tpS8fD2lRDyE='; // 产品的 access_key
 
-  console.log('👉 将使用以下连接参数：');
-  console.log('   hostname:', 'mqtt.heclouds.com');
-  console.log('   port:    ', 443);
-  console.log('   path:    ', '/mqtt');
-  console.log('   protocol:', 'wss');
+    // —— 二、HTTP 下发函数 —— 
+    async function publishBorrowStaHTTP(value) {
+      const url = `https://api.heclouds.com/devices/${DEVICE_ID}/properties`;
+      const body = { borrow_sta: value };
 
-  const client = mqtt.connect({
-    protocol:    'wss',                 // WebSocket 安全协议
-    hostname:    'mqtt.heclouds.com',   // 一定要用 hostname 而不是 host
-    port:        443,                   // 明确端口
-    path:        '/mqtt',               // 明确路径
-    clientId:    'web_' + Math.random().toString(16).substr(2,8),
-    username:    PRODUCT_ID,
-    password:    ACCESS_KEY,
-    clean:       true,
-    keepalive:   60,
-    reconnectPeriod: 2000,
-    debug:       true                   // 打开 mqtt.js 内部调试
-  });
-
-  client.on('connect',   () => console.log('✅ MQTT 已连接'));
-  client.on('reconnect', () => console.log('🔄 MQTT 重连中…'));
-  client.on('offline',   () => console.warn('⚠️ MQTT 离线'));
-  client.on('error',     err => console.error('❌ MQTT 错误：', err.message));
-
-  function publishBorrowSta(value) {
-    const topic = `/sys/${PRODUCT_ID}/${DEVICE_NAME}/thing/service/property/set`;
-    const payload = { id: Date.now().toString(), params: { borrow_sta: value } };
-    console.log('👉 publish', topic, payload);
-    client.publish(topic, JSON.stringify(payload), { qos: 1 }, err => {
-      if (err) console.error('❌ 发布失败：', err.message);
-      else    console.log('✅ 下发完成');
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    document.body.addEventListener('click', e => {
-      if (e.target.classList.contains('reserve-btn')) {
-        e.preventDefault();
-        publishBorrowSta(true);
-        showModal();
+      console.log('👉 HTTP POST', url, body);
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'api-key': API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (res.ok && data.errno === 0) {
+          console.log('✅ HTTP 下发成功：', data);
+        } else {
+          console.error('❌ HTTP 下发失败：', data);
+        }
+      } catch (err) {
+        console.error('❌ 网络或解析错误：', err);
       }
+    }
+
+    // —— 三、按钮 & 弹窗逻辑 —— 
+    document.addEventListener('DOMContentLoaded', () => {
+      document.body.addEventListener('click', e => {
+        if (e.target.classList.contains('reserve-btn')) {
+          e.preventDefault();
+          publishBorrowStaHTTP(true);
+          showModal();
+        }
+      });
+
+      const modal = document.getElementById('successModal');
+      modal.querySelector('.close').addEventListener('click', closeModal);
+      modal.querySelector('.confirm-btn').addEventListener('click', closeModal);
+      modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && modal.style.display === 'block') closeModal();
+      });
     });
-    // … 模态框逻辑 …
-  });
 
     function showModal() {
-      const m = document.getElementById('successModal');
-      m.style.display = 'block';
+      const modal = document.getElementById('successModal');
+      modal.style.display = 'block';
       document.body.style.overflow = 'hidden';
     }
     function closeModal() {
-      const m = document.getElementById('successModal');
-      m.style.display = 'none';
+      const modal = document.getElementById('successModal');
+      modal.style.display = 'none';
       document.body.style.overflow = 'auto';
     }
   </script>
