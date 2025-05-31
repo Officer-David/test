@@ -179,69 +179,56 @@
 
    <!-- MQTT.js -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <script>
-    // ———— 参数配置 ————
-    const PRODUCT_ID   = '1pqUjxykK3';
-    const ACCESS_KEY   = 'GzEhAZdfu6GFzyWdFYNb0b1tte13y89tpS8fD2lRDyE=';
-    const DEVICE_NAME  = '866597075998011';
-    
-    console.log('👉 将使用以下连接参数：');
-    console.log('   host: mqtt.heclouds.com');
-    console.log('   port: 443');
-    console.log('   path: /mqtt');
-    console.log('   protocol: wss');
+<script>
+  const PRODUCT_ID   = '1pqUjxykK3';
+  const ACCESS_KEY   = 'GzEhAZdfu6GFzyWdFYNb0b1tte13y89tpS8fD2lRDyE=';
+  const DEVICE_NAME  = '866597075998011';
 
-    // ———— 建立 MQTT over WebSocket 安全连接 ————
-    const client = mqtt.connect({
-      host: 'mqtt.heclouds.com',
-      port: 443,
-      path: '/mqtt',
-      protocol: 'wss',
-      clientId: 'web_' + Math.random().toString(16).substr(2,8),
-      username: PRODUCT_ID,
-      password: ACCESS_KEY,
-      clean: true,
-      keepalive: 60,
-      reconnectPeriod: 2000,
-      debug: true   // 打开 mqtt.js 内部调试日志
+  console.log('👉 将使用以下连接参数：');
+  console.log('   hostname:', 'mqtt.heclouds.com');
+  console.log('   port:    ', 443);
+  console.log('   path:    ', '/mqtt');
+  console.log('   protocol:', 'wss');
+
+  const client = mqtt.connect({
+    protocol:    'wss',                 // WebSocket 安全协议
+    hostname:    'mqtt.heclouds.com',   // 一定要用 hostname 而不是 host
+    port:        443,                   // 明确端口
+    path:        '/mqtt',               // 明确路径
+    clientId:    'web_' + Math.random().toString(16).substr(2,8),
+    username:    PRODUCT_ID,
+    password:    ACCESS_KEY,
+    clean:       true,
+    keepalive:   60,
+    reconnectPeriod: 2000,
+    debug:       true                   // 打开 mqtt.js 内部调试
+  });
+
+  client.on('connect',   () => console.log('✅ MQTT 已连接'));
+  client.on('reconnect', () => console.log('🔄 MQTT 重连中…'));
+  client.on('offline',   () => console.warn('⚠️ MQTT 离线'));
+  client.on('error',     err => console.error('❌ MQTT 错误：', err.message));
+
+  function publishBorrowSta(value) {
+    const topic = `/sys/${PRODUCT_ID}/${DEVICE_NAME}/thing/service/property/set`;
+    const payload = { id: Date.now().toString(), params: { borrow_sta: value } };
+    console.log('👉 publish', topic, payload);
+    client.publish(topic, JSON.stringify(payload), { qos: 1 }, err => {
+      if (err) console.error('❌ 发布失败：', err.message);
+      else    console.log('✅ 下发完成');
     });
+  }
 
-    client.on('connect',   () => console.log('✅ MQTT 已连接'));
-    client.on('reconnect', () => console.log('🔄 MQTT 重连中…'));
-    client.on('offline',   () => console.warn('⚠️ MQTT 离线'));
-    client.on('error',     err => console.error('❌ MQTT 错误：', err.message));
-
-    // ———— 下发属性命令 ———
-    function publishBorrowSta(value) {
-      const topic = `/sys/${PRODUCT_ID}/${DEVICE_NAME}/thing/service/property/set`;
-      const payload = {
-        id: Date.now().toString(),
-        params: { borrow_sta: value }
-      };
-      console.log('👉 publish', topic, payload);
-      client.publish(topic, JSON.stringify(payload), { qos: 1 }, err => {
-        if (err) console.error('❌ 发布失败：', err.message);
-        else    console.log('✅ 下发完成');
-      });
-    }
-
-    // ———— 预约按钮 & 弹窗逻辑 ————
-    document.addEventListener('DOMContentLoaded', () => {
-      document.body.addEventListener('click', e => {
-        if (e.target.classList.contains('reserve-btn')) {
-          e.preventDefault();
-          publishBorrowSta(true);
-          showModal();
-        }
-      });
-      const modal = document.getElementById('successModal');
-      modal.querySelector('.close').addEventListener('click', closeModal);
-      modal.querySelector('.confirm-btn').addEventListener('click', closeModal);
-      modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-      document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && modal.style.display === 'block') closeModal();
-      });
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.addEventListener('click', e => {
+      if (e.target.classList.contains('reserve-btn')) {
+        e.preventDefault();
+        publishBorrowSta(true);
+        showModal();
+      }
     });
+    // … 模态框逻辑 …
+  });
 
     function showModal() {
       const m = document.getElementById('successModal');
