@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>智能校园共享运动器材管理系统</title>
+  <style>
+    /* ========= 按钮及页面通用样式 ========= */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+    }
+    header {
+      background-color: #333;
+      color: #fff;
+      padding: 10px 0;
+      text-align: center;
+    }
+    main {
+      padding: 20px;
+      min-height: calc(100vh - 200px);
+    }
+    .selection-title {
+      text-align: center;
+      margin: 40px 0;
+      color: #333;
+      font-size: 2em;
+    }
+    .button-container {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .equipment-item {
+      background: white;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+    .equipment-item:hover {
+      transform: translateY(-5px);
+    }
+    .equipment-item h3 {
+      color: #333;
+      margin: 15px 0;
+      font-size: 1.4em;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+    .equipment-item p {
+      color: #666;
+      line-height: 1.6;
+      margin: 10px 0;
+    }
+    .reserve-btn {
+      display: inline-block;
+      margin-top: 15px;
+      padding: 8px 20px;
+      background: #28a745;
+      color: white;
+      border-radius: 5px;
+      text-decoration: none;
+      transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .reserve-btn:hover {
+      background: #218838;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    }
+    .return-btn {
+      position: fixed;
+      right: 30px;
+      bottom: 80px;
+      padding: 15px 30px;
+      background-color: #dc3545;
+      color: white;
+      border-radius: 8px;
+      font-size: 1.2em;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      z-index: 999;
+    }
+    .return-btn:hover {
+      background-color: #c82333;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    }
+    footer {
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      padding: 10px 0 40px; /* 底部多留出空间 */
+      position: fixed;
+      width: 100%;
+      bottom: 0;
+    }
+    /* 模态框 */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+    .modal-content {
+      position: relative;
+      background-color: #fff;
+      margin: 15% auto;
+      padding: 30px;
+      width: 80%;
+      max-width: 400px;
+      border-radius: 10px;
+      text-align: center;
+      animation: modalShow 0.3s ease;
+    }
+    @keyframes modalShow {
+      from { transform: translateY(-50px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .close {
+      position: absolute;
+      right: 15px;
+      top: 10px;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+    }
+    .close:hover { color: #333; }
+    .confirm-btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 30px;
+      background: #28a745;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .confirm-btn:hover { background: #218838; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>智能校园共享运动器材管理系统</h1>
+  </header>
+  <main>
+    <h2 class="selection-title">羽毛球</h2>
+    <div class="button-container">
+      <div class="equipment-item">
+        <h3>球拍1(进攻型)</h3>
+        <p>材质：碳纤维</p>
+        <a href="#" class="reserve-btn">立即预约</a>
+      </div>
+    </div>
+    <!-- 归还按钮 -->
+    <a href="return-badminton.html" class="return-btn">↻ 归还器材</a>
+  </main>
+  <footer>
+    大卫爱冒险 - 智能校园共享运动器材管理系统
+  </footer>
+
+  <!-- 成功弹窗 -->
+  <div id="successModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>🎉 预约成功!</h2>
+      <div class="confirm-btn">确定</div>
+    </div>
+  </div>
+
+   <!-- 引入 MQTT.js -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    // —— 参数配置 —— 
+    const PRODUCT_ID  = '1pqUjxykK3';
+    const ACCESS_KEY  = 'GzEhAZdfu6GFzyWdFYNb0b1tte13y89tpS8fD2lRDyE=';
+    const DEVICE_NAME = '866597075998011';  // ← 确保和控制台一致
+    // 一定要用 mqtt.heclouds.com 而不是 mqtts.heclouds.com，端口 443
+    const WS_URL      = 'wss://mqtt.heclouds.com:443/mqtt';
+    console.log('👉 正在使用 WebSocket URL:', WS_URL);
+
+    // —— 建立连接 —— 
+    const client = mqtt.connect(WS_URL, {
+      clientId: 'web_' + Math.random().toString(16).substr(2,8),
+      username: PRODUCT_ID,
+      password: ACCESS_KEY,
+      protocol: 'wss',
+      clean: true,
+      reconnectPeriod: 2000
+    });
+
+    client.on('connect', () => console.log('✅ MQTT 已连接'));
+    client.on('reconnect', () => console.log('🔄 MQTT 正在重连…'));
+    client.on('offline',  () => console.warn('⚠️ MQTT 已离线'));
+    client.on('error',   err => console.error('❌ MQTT 连接错误：', err));
+
+    // —— 下发属性 —— 
+    function publishBorrowSta(value) {
+      const topic = `/sys/${PRODUCT_ID}/${DEVICE_NAME}/thing/service/property/set`;
+      const payload = {
+        id: Date.now().toString(),
+        params: { borrow_sta: value }
+      };
+      console.log('👉 发布到 Topic:', topic, 'Payload:', payload);
+      client.publish(topic, JSON.stringify(payload), { qos: 1 }, err => {
+        if (err) console.error('❌ 发布失败：', err);
+        else    console.log('✅ 已下发 borrow_sta=', value);
+      });
+    }
+
+    // —— 按钮 & 弹窗 逻辑 —— 
+    document.addEventListener('DOMContentLoaded', () => {
+      document.body.addEventListener('click', e => {
+        if (e.target.classList.contains('reserve-btn')) {
+          e.preventDefault();
+          publishBorrowSta(true);
+          showModal();
+        }
+      });
+
+      const modal = document.getElementById('successModal');
+      modal.querySelector('.close').addEventListener('click', closeModal);
+      modal.querySelector('.confirm-btn').addEventListener('click', closeModal);
+      modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && modal.style.display === 'block') closeModal();
+      });
+    });
+
+    function showModal() {
+      const modal = document.getElementById('successModal');
+      modal.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      const modal = document.getElementById('successModal');
+      modal.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+  </script>
+</body>
+</html>
