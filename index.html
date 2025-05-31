@@ -180,42 +180,45 @@
    <!-- MQTT.js -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script>
-    const PRODUCT_ID  = '1pqUjxykK3';
-    const ACCESS_KEY  = 'GzEhAZdfu6GFzyWdFYNb0b1tte13y89tpS8fD2lRDyE=';
-    const DEVICE_NAME = '866597075998011';
+    // ———— 一、参数配置 ————
+const PRODUCT_ID  = '1pqUjxykK3';
+const ACCESS_KEY  = 'GzEhAZdfu6GFzyWdFYNb0b1tte13y89tpS8fD2lRDyE=';
+const DEVICE_NAME = '866597075998011';
 
-    console.log('👉 正在初始化 MQTT 连接…');
+// 把 URL 写成一整个字符串，确保端口不丢
+const WS_URL = 'wss://mqtt.heclouds.com:443/mqtt';
 
-    const client = mqtt.connect({
-      protocol: 'wss',                // 使用 WebSocket 安全
-      hostname: 'mqtt.heclouds.com',  // OneNET 主机
-      port: 443,                      // 明确端口
-      path: '/mqtt',                  // 明确路径
-      clientId: 'web_' + Math.random().toString(16).substr(2,8),
-      username: PRODUCT_ID,
-      password: ACCESS_KEY,
-      clean: true,
-      reconnectPeriod: 2000,
-      keepalive: 60
-    });
+console.log('👉 正在使用 WebSocket URL:', WS_URL);
 
-    client.on('connect', () => console.log('✅ MQTT 已连接'));
-    client.on('reconnect', () => console.log('🔄 MQTT 重连中…'));
-    client.on('offline',  () => console.warn('⚠️ MQTT 离线'));
-    client.on('error',   err => console.error('❌ MQTT 错误：', err.message));
+// ———— 二、建立连接 ————
+const client = mqtt.connect(WS_URL, {
+  clientId:    'web_' + Math.random().toString(16).substr(2,8),
+  username:    PRODUCT_ID,
+  password:    ACCESS_KEY,
+  protocol:    'wss',
+  clean:       true,
+  reconnectPeriod: 2000,
+  keepalive:   60
+});
 
-    function publishBorrowSta(value) {
-      const topic = `/sys/${PRODUCT_ID}/${DEVICE_NAME}/thing/service/property/set`;
-      const payload = {
-        id: Date.now().toString(),
-        params: { borrow_sta: value }
-      };
-      console.log('👉 发布到', topic, JSON.stringify(payload));
-      client.publish(topic, JSON.stringify(payload), { qos: 1 }, err => {
-        if (err) console.error('❌ 发布失败：', err.message);
-        else    console.log('✅ 下发完成');
-      });
-    }
+client.on('connect',   () => console.log('✅ MQTT 已连接'));
+client.on('reconnect', () => console.log('🔄 MQTT 重连中…'));
+client.on('offline',   () => console.warn('⚠️ MQTT 离线'));
+client.on('error',     err => console.error('❌ MQTT 错误：', err.message));
+
+// ———— 三、下发属性 ————
+function publishBorrowSta(value) {
+  const topic = `/sys/${PRODUCT_ID}/${DEVICE_NAME}/thing/service/property/set`;
+  const payload = {
+    id: Date.now().toString(),
+    params: { borrow_sta: value }
+  };
+  console.log('👉 发布到', topic, JSON.stringify(payload));
+  client.publish(topic, JSON.stringify(payload), { qos: 1 }, err => {
+    if (err) console.error('❌ 发布失败：', err.message);
+    else    console.log('✅ 下发完成');
+  });
+}
 
     document.addEventListener('DOMContentLoaded', () => {
       document.body.addEventListener('click', e => {
